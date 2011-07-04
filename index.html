@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+﻿<!DOCTYPE html> 
 <html>
 <head>
 <title>Idiator</title>
@@ -6,36 +6,92 @@
 <script type="text/javascript" src="./lib/jquery.min.js"></script>
 
 <script type="text/javascript">
-$(document).ready(function() {
-	/*$.ajax({
-		url:"http://grender.couchone.com/idiator/4bcc311ad68e46bc7ebfe67f01000e16"
-	}).done(function() {
-		console.log(arguments);
-	});*/
-	
 
+	function loadFromStorage()
+	{
+		var storageData=JSON.parse(localStorage.getItem("wordsArray"));
+		if(!storageData) {
+			storageData={
+				"Субъект":["я","волк","мышь","красная шапочка"],
+				"Сделал":["взял","поглади","прочитал","кинул"],
+				"Объект":["кружка","книжка","ложка","стол"],
+			};
+		}
+		
+		var wordsArray=loadFrom(storageData);
+
+		for(var colName in wordsArray)
+		{
+			var words=wordsArray[colName];
+			var standartText=$("#wordsStandart").html();
+			$("#editor").append("<div id='"+colName+"'>"+standartText+"</div>");
+			$("#"+colName+">h1").html(colName);
+			var result="";
+			for(var i=0;i<words.length;i++)
+				result=result.concat(result==""?"":"\n",words[i]);
+			$("#"+colName+">textarea").val(result);
+		}
+	}
+	
+	function saveToStorage() {
+		var toSave=loadFromInterface();
+		localStorage.setItem("wordsArray",JSON.stringify(toSave));
+	}
+	
+	function addColumn()
+	{
+		var standartText=$("#wordsStandart").html();
+		$("#editor").append("<div id='newColumn'>"+standartText+"</div>");
+		$("#newColumn>h1").html('newColumn');	
+	}
+	
 	function loadFrom(data) {
-		var wordsPrefix="words_";
 		var wordsArray=[];	
 		for(var prop in data)
 		{
 			if(data.hasOwnProperty(prop))
 			{
-				if(prop.indexOf(wordsPrefix)>=0)
-				{
-					
-					var index=prop.replace(wordsPrefix,"");
-					wordsArray[index]=data[prop];
-				}
+				wordsArray[prop]=data[prop];
 			}
 		}
 		return wordsArray;
 	}
 
+	function loadFromInterface()
+	{
+		var result=[];
+		var textAreas=$("#editor>div>textarea");
+		for(var i=0;i<textAreas.length;i++)
+		{
+			var textArea=$(textAreas[i]);
+			var colName=textArea.parent()[0].id;
+			if(colName==="wordsStandart")
+				continue;
+			var temp=[];
+			var val=textArea.val();
+			
+			var start=0;
+			var end=val.indexOf("\n");
+			var word=val.substring(start,end);
+			while(true)
+			{
+				temp.push(word);
+				if(end===val.length-1)
+					break;
+				start=end+1;
+				end=val.indexOf("\n",start);
+				if(end===-1)
+					end=val.length-1;
+				word=val.substring(start,end);
+			}
+			result.push(temp);
+		}
+		return result;
+	}
 	
 	function doIt()
 	{
-		var wordsArray=loadFrom(JSON.parse('{"_id":"4bcc311ad68e46bc7ebfe67f01000e16","_rev":"1-34dae0a8b73c121542f25a6961e430bb","userId":null,"words_0":["\u044f","\u0442\u044b","\u0441\u043b\u043e\u043d","\u0431\u0430\u0440\u043c\u0430\u0433\u043b\u043e\u0442"],"words_1":["\u0432\u0437\u044f\u043b","\u0443\u0434\u0430\u0440\u0438\u043b","\u043f\u0440\u043e\u0447\u0438\u0442\u0430\u043b","\u043f\u043e\u0448\u0435\u043b","\u043f\u043e\u043b\u0435\u0442\u0435\u043b","\u0432\u0437\u0433\u0440\u0430\u043c\u043e\u0437\u0434\u0438\u043b\u0441\u044f"],"words_2":["\u0432","\u043d\u0430","\u043d\u0430\u0434","\u043f\u043e\u0434"],"words_3":["\u043b\u0435\u043c\u0443\u0440","\u0412\u0430\u0432\u0438\u043b\u043e\u043d","\u043b\u0435\u0431\u0435\u0434\u044c","\u043a\u0430\u043d\u0434\u0435\u043b\u044f\u0431\u0440"]}'));
+		var wordsArray=loadFromInterface();
 	
 		var res="";
 		for(var i=0;i<wordsArray.length;i++) 
@@ -46,17 +102,127 @@ $(document).ready(function() {
 		}
 		$("#idea").html(res);
 	}
+
+	function supports_html5_storage() {
+	  try {
+		return 'localStorage' in window && window['localStorage'] !== null;
+	  } catch (e) {
+		return false;
+	  }
+	}
+	
+	function showNameEditor() 
+	{
+		var wordDiv=$(this).parent();
+		wordDiv.find("h1").toggle(false);
+		wordDiv.find(".nameEditor").toggle(true);
+		wordDiv.find(".nameEditor>input").val(wordDiv[0].id);
+	}
+
+	function hideNameEditor() 
+	{
+		var wordDiv=$(this).parent().parent();
+		wordDiv.find("h1").toggle(true);
+		wordDiv.find(".nameEditor").toggle(false);
+	}
+	
+	function saveFromNameEditor()
+	{
+		var wordDiv=$(this).parent().parent();
+		var newName=wordDiv.find(".nameEditor>input").val();
+		wordDiv[0].id=newName;
+		wordDiv.find("h1").html(newName);
+		hideNameEditor.call(this);	
+	}
+	
+$(document).ready(function() {
+
+	if(!supports_html5_storage())
+	{
+		alert("Надобен браузер поновее!");
+	}
 	
 	$('#doIt').click(doIt);
+	$("#saveBtn").click(saveToStorage);
+	$("#addColBtn").click(addColumn);
+	$("#editor>div>h1").live('click',showNameEditor);
 	
-		
-	
+	$("#saveNameBtn").live('click',saveFromNameEditor);
+	$("#closeNameEditorBtn").live('click',hideNameEditor);
+
+	loadFromStorage();
+
 	});
 </script>
 
+<style>
+html, body {
+    min-height: 100% !important;
+    min-height: auto;
+    height: 100%;
+    border: none;
+    margin-left: auto;
+    margin-right: auto;
+    font-family: "Segoe UI", sans-serif;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+}
+	div#editor {
+		height: 100%;
+	}
+	
+	div#editor>div {
+		height: 100%;
+		width: 200px;
+		float:left;
+		border: 1px solid gray
+	}
+	
+	div#editor>div>textarea {
+		width:96%;
+		height:50%;
+	}
+	
+	#wordsStandart,.nameEditor {
+		display:none;
+	}
+	
+	div#editor>div#addDiv {
+		height: 100%;
+		width: 200px;
+		float:right;
+		border: 1px solid gray
+	}
+	
+	#addColBtn {
+		margin-left: 85px;
+		width:30px;
+		height:30px;
+	}
+	
+	
+</style>
+
 </head>
 <body>
-<button id="doIt">Do It</button><br>
+<button id="saveBtn">Save</button><button id="doIt">Do It</button><br>
 <h1 id="idea"></h1>
+
+<div id="editor">
+	<div id="wordsStandart">
+		<h1>Words 1</h1>
+		<span class="nameEditor">
+			<input type="text"><button id="saveNameBtn">OK</button><button id="closeNameEditorBtn">Не OK</button>
+		</span>
+		<textarea></textarea>
+	</div>
+	<div id="addDiv">
+	<button id="addColBtn">+</button>
+	</div>
+</div>
+
 </body>
 </html>
